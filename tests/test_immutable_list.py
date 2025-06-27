@@ -1,13 +1,15 @@
 import pytest
-from imut.immutable_list import ImmutableList
+from imut import ImmutableList
+from imut.immutable_list import _TRIE_WIDTH
 
 @pytest.mark.parametrize(
         'arg, expected',
         (
             ([1, '2', 3.0, {4: 5}, None], (1, '2', 3.0, {4: 5}, None)),
-            ((i + 10 for i in range(5)), (10, 11, 12, 13, 14)),
+            ((i + 10 for i in range(50)), tuple(i + 10 for i in range(50))),
             ({1, 2}, (1, 2)),
-            ({1: 2, '3': '4'}, (1, '3'))
+            ({1: 2, '3': '4'}, (1, '3')),
+            ([i for i in range(1000)], tuple(i for i in range(1000)))
         )
 )
 def test_get_item(arg, expected):
@@ -17,7 +19,7 @@ def test_get_item(arg, expected):
         assert j == l[i]
 
 def test_iter():
-    data = (1, 2, 3)
+    data = tuple(i for i in range(_TRIE_WIDTH + 1))
     l = ImmutableList(data)
 
     index = 0
@@ -26,26 +28,38 @@ def test_iter():
         index += 1
 
 def test_slice():
-    assert ImmutableList([1,2,3])[:2] == ImmutableList([1,2])
+    data = [i for i in range(64 ** 3)]
+    assert ImmutableList(data)[:100] == ImmutableList(range(100))
+    assert ImmutableList(data)[100:500] == ImmutableList(range(100, 500))
+    assert ImmutableList(data)[500:9000:4] == ImmutableList(range(500, 9000, 4))
 
 def test_append():
     l = ImmutableList([1,2])
-    assert l.append(3) == ImmutableList([1,2,3])
+    to_append = (i for i in range(3, 64 ** 2))
+    new_list = l
+    for i in to_append:
+        new_list = new_list.append(i)
+    assert new_list == ImmutableList((i for i in range(1, 64 ** 2)))
     assert l == ImmutableList([1,2])
 
 def test_extend():
     l = ImmutableList([1,2])
-    assert l.extend([3, 4]) == ImmutableList([1,2,3,4])
+    assert l.extend((i for i in range(3, 64 ** 2))) == ImmutableList((i for i in range(1, 64 ** 2)))
     assert l == ImmutableList([1,2])
 
 def test_add():
     l = ImmutableList([1,2])
-    assert l + ImmutableList([3,4]) == ImmutableList([1,2,3,4])
+    assert l + ImmutableList((i for i in range(3, 64 ** 2))) == ImmutableList((i for i in range(1, 64 ** 2)))
     assert l == ImmutableList([1,2])
 
 def test_insert():
     l = ImmutableList([2])
-    assert l.insert(10, 4).insert(0, 1).insert(2, 3) == ImmutableList([1,2,3,4])
+    new_l = l.insert(10, 4).insert(0, 1).insert(2, 3)
+    for i in range(64 ** 2):
+        if i == 61:
+            print(1)
+        new_l = new_l.insert(64 ** 2, 64000)
+    assert new_l == ImmutableList((1,2,3,4) + tuple(64000 for _ in range(64 ** 2)))
     assert l == ImmutableList([2])
 
 def test_remove():
@@ -59,10 +73,10 @@ def test_remove_should_raise_ValueError_when_value_not_found():
         l.remove(4)
 
 def test_index():
-    l = ImmutableList([1, 2, 3])
-    assert l.index(1) == 0
-    assert l.index(2, 1) == 1
-    assert l.index(3, 1, 999) == 2
+    l = ImmutableList((i for i in range(64 ** 2)))
+    assert l.index(1) == 1
+    assert l.index(2, 1) == 2
+    assert l.index(3, 1, 999) == 3
 
 @pytest.mark.parametrize(
     'args',
